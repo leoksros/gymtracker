@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#111418">
+  <meta name="description" content="Tracker de progreso en el gym">
+  <title>Gym Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gym Tracker">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <h1 id="screen-title">Registrar</h1>
+    <div class="topbar-actions">
+      <button id="btn-timer" class="icon-btn timer-btn" aria-label="Cronómetro" aria-haspopup="dialog">&#9201;</button>
+      <button id="btn-menu" class="icon-btn" aria-label="Ajustes" aria-haspopup="dialog">&#9881;</button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ===================== REGISTRAR ===================== -->
+    <section id="view-registrar" class="view">
+      <!-- novalidate: la validación la maneja app.js, con mensajes propios en pantalla
+           (los globos nativos del browser se pierden fácil en mobile) -->
+      <form id="form-session" class="card" autocomplete="off" novalidate>
+        <label class="field">
+          <span>Fecha</span>
+          <input type="date" id="session-date" required>
+        </label>
+
+        <!-- combobox con buscador: el <input type="hidden"> guarda el id elegido,
+             así el resto del código sigue leyendo #session-exercise.value -->
+        <div class="field">
+          <span id="lbl-session-exercise">Ejercicio</span>
+          <div class="combo">
+            <input type="text" id="session-exercise-search" class="combo-input"
+                   role="combobox" aria-expanded="false" aria-autocomplete="list"
+                   aria-controls="session-exercise-list" aria-labelledby="lbl-session-exercise"
+                   autocomplete="off" placeholder="Buscá un ejercicio…">
+            <button type="button" id="session-exercise-clear" class="combo-clear hidden"
+                    aria-label="Limpiar ejercicio">&#10005;</button>
+            <ul id="session-exercise-list" class="combo-list hidden" role="listbox"
+                aria-label="Ejercicios"></ul>
+          </div>
+          <input type="hidden" id="session-exercise">
+        </div>
+
+        <p id="no-exercises-hint" class="hint hidden">
+          Todavía no tenés ejercicios cargados. Andá a <strong>Ejercicios</strong> y agregá el primero.
+        </p>
+
+        <!-- referencia de la sesión anterior del ejercicio elegido -->
+        <div id="last-session" class="last-session hidden">
+          <div class="ls-head">
+            <span class="ls-title">Última sesión</span>
+            <span id="last-session-date" class="ls-date"></span>
+          </div>
+          <div id="last-session-sets" class="ls-sets"></div>
+          <div class="ls-metrics">
+            <span>Vol. <strong id="last-session-vol">—</strong></span>
+            <span>1RM <strong id="last-session-rm">—</strong></span>
+          </div>
+          <button type="button" id="btn-copy-last" class="btn btn-ghost btn-sm">
+            Copiar estas series
+          </button>
+        </div>
+        <p id="last-session-none" class="hint hidden">Primera sesión de este ejercicio.</p>
+
+        <div class="sets-block">
+          <div class="sets-head">
+            <span>Series</span>
+            <span class="sets-legend">reps &times; kg</span>
+          </div>
+          <div id="sets-list"></div>
+          <div class="row-btns">
+            <button type="button" id="btn-add-set" class="btn btn-ghost">+ Agregar serie</button>
+            <button type="button" id="btn-rest" class="btn btn-ghost">&#9201; Descanso</button>
+          </div>
+        </div>
+
+        <div id="live-summary" class="live-summary hidden">
+          <div>
+            <span class="ls-label">Volumen</span>
+            <strong id="ls-volume">0</strong>
+            <span id="ls-volume-delta" class="delta flat hidden"></span>
+          </div>
+          <div>
+            <span class="ls-label">1RM est.</span>
+            <strong id="ls-1rm">0</strong>
+            <span id="ls-1rm-delta" class="delta flat hidden"></span>
+          </div>
+        </div>
+
+        <p id="session-error" class="error hidden"></p>
+
+        <button type="submit" class="btn btn-primary btn-lg">Guardar sesión</button>
+        <button type="button" id="btn-cancel-edit" class="btn btn-ghost hidden">Cancelar edición</button>
+      </form>
+
+      <section class="card">
+        <h2 class="card-title">Últimas sesiones <span id="recent-count" class="count-pill hidden"></span></h2>
+        <ul id="recent-sessions" class="recent-list"></ul>
+      </section>
+    </section>
+
+    <!-- ===================== EJERCICIOS ===================== -->
+    <section id="view-ejercicios" class="view hidden">
+      <form id="form-exercise" class="card" autocomplete="off" novalidate>
+        <label class="field">
+          <span>Nombre</span>
+          <input type="text" id="exercise-name" placeholder="Press banca" maxlength="60" required>
+        </label>
+        <label class="field">
+          <span>Grupo muscular <em>(opcional)</em></span>
+          <input type="text" id="exercise-group" placeholder="Pecho" maxlength="40" list="muscle-groups">
+          <datalist id="muscle-groups">
+            <option value="Pecho"></option>
+            <option value="Espalda"></option>
+            <option value="Piernas"></option>
+            <option value="Hombros"></option>
+            <option value="Bíceps"></option>
+            <option value="Tríceps"></option>
+            <option value="Core"></option>
+            <option value="Cardio"></option>
+          </datalist>
+        </label>
+        <p id="exercise-error" class="error hidden"></p>
+        <div class="row-btns">
+          <button type="submit" id="btn-save-exercise" class="btn btn-primary">Agregar ejercicio</button>
+          <button type="button" id="btn-cancel-exercise" class="btn btn-ghost hidden">Cancelar</button>
+        </div>
+      </form>
+
+      <section class="card">
+        <h2 class="card-title">Mis ejercicios <span id="exercise-count" class="count-pill hidden"></span></h2>
+        <ul id="exercise-list" class="ex-list"></ul>
+        <button type="button" id="exercise-more" class="btn btn-ghost btn-sm hidden"></button>
+      </section>
+    </section>
+
+    <!-- ===================== PROGRESO ===================== -->
+    <section id="view-progreso" class="view hidden">
+      <div class="card">
+        <div class="field">
+          <span id="lbl-progress-exercise">Ejercicio</span>
+          <div class="combo">
+            <input type="text" id="progress-exercise-search" class="combo-input"
+                   role="combobox" aria-expanded="false" aria-autocomplete="list"
+                   aria-controls="progress-exercise-list" aria-labelledby="lbl-progress-exercise"
+                   autocomplete="off" placeholder="Buscá un ejercicio…">
+            <button type="button" id="progress-exercise-clear" class="combo-clear hidden"
+                    aria-label="Limpiar ejercicio">&#10005;</button>
+            <ul id="progress-exercise-list" class="combo-list hidden" role="listbox"
+                aria-label="Ejercicios"></ul>
+          </div>
+          <input type="hidden" id="progress-exercise">
+        </div>
+      </div>
+
+      <!-- desplegable: con muchos ejercicios la lista tapaba el gráfico -->
+      <section class="card" id="weekly-card">
+        <button type="button" id="weekly-toggle" class="card-toggle"
+                aria-expanded="false" aria-controls="weekly-body">
+          <span class="card-title">Resumen semanal</span>
+          <span class="toggle-right">
+            <span id="weekly-count" class="count-pill"></span>
+            <span class="chev" aria-hidden="true">&#9662;</span>
+          </span>
+        </button>
+        <div id="weekly-body" class="collapse-body hidden">
+          <p id="weekly-range" class="hint"></p>
+          <ul id="weekly-list" class="weekly-list"></ul>
+          <button type="button" id="weekly-more" class="btn btn-ghost btn-sm hidden"></button>
+        </div>
+      </section>
+
+      <div id="progress-empty" class="card empty-state">
+        Elegí un ejercicio para ver su historial y evolución.
+      </div>
+
+      <div id="progress-content" class="hidden">
+        <div class="stats-row">
+          <div class="stat"><span class="stat-label">Sesiones</span><strong id="stat-count">0</strong></div>
+          <div class="stat"><span class="stat-label">Mejor 1RM</span><strong id="stat-best-1rm">0</strong></div>
+          <div class="stat"><span class="stat-label">Mejor vol.</span><strong id="stat-best-vol">0</strong></div>
+        </div>
+
+        <section class="card">
+          <h2 class="card-title">Evolución</h2>
+          <div class="chart-wrap"><canvas id="progress-chart"></canvas></div>
+          <p id="chart-fallback" class="hint hidden">
+            No se pudo cargar Chart.js (¿sin conexión en la primera carga?). La tabla de abajo sigue funcionando.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">Historial <span id="history-count" class="count-pill hidden"></span></h2>
+          <!-- tarjeta por día: todo entra a lo ancho, sin scroll horizontal -->
+          <ol id="history-list" class="hist-list"></ol>
+          <button type="button" id="history-more" class="btn btn-ghost btn-sm hidden"></button>
+        </section>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab" data-view="registrar" aria-current="page">
+      <span class="tab-ico">&#43;</span><span>Registrar</span>
+    </button>
+    <button class="tab" data-view="ejercicios">
+      <span class="tab-ico">&#9776;</span><span>Ejercicios</span>
+    </button>
+    <button class="tab" data-view="progreso">
+      <span class="tab-ico">&#9650;</span><span>Progreso</span>
+    </button>
+  </nav>
+
+  <!-- ===================== CRONÓMETRO ===================== -->
+  <div id="timer-backdrop" class="backdrop hidden"></div>
+  <div id="timer-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Cronómetro">
+    <div class="seg-group" role="tablist">
+      <button type="button" class="seg" data-mode="rest" role="tab" aria-selected="true">Descanso</button>
+      <button type="button" class="seg" data-mode="stopwatch" role="tab" aria-selected="false">Cronómetro</button>
+    </div>
+
+    <div id="timer-display" class="timer-display" role="timer" aria-live="off">01:30</div>
+    <p id="timer-caption" class="hint timer-caption">Cuenta regresiva hasta 0.</p>
+
+    <div id="timer-presets" class="timer-presets">
+      <button type="button" class="chip" data-secs="45">45s</button>
+      <button type="button" class="chip" data-secs="60">1:00</button>
+      <button type="button" class="chip" data-secs="90">1:30</button>
+      <button type="button" class="chip" data-secs="120">2:00</button>
+      <button type="button" class="chip" data-secs="180">3:00</button>
+      <button type="button" class="chip" data-secs="300">5:00</button>
+    </div>
+
+    <div class="row-btns">
+      <button type="button" id="btn-timer-toggle" class="btn btn-primary">Iniciar</button>
+      <button type="button" id="btn-timer-reset" class="btn btn-ghost">Reiniciar</button>
+    </div>
+    <button type="button" id="btn-timer-close" class="btn btn-ghost btn-block">Cerrar</button>
+  </div>
+
+  <!-- ===================== SHEET AJUSTES ===================== -->
+  <div id="sheet-backdrop" class="backdrop hidden"></div>
+  <div id="sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Ajustes">
+    <h2 class="card-title">Notificaciones</h2>
+    <label class="switch-row">
+      <span>Resumen de progreso los lunes</span>
+      <input type="checkbox" id="chk-weekly">
+    </label>
+    <p class="hint" id="notif-info"></p>
+    <button type="button" id="btn-weekly-preview" class="btn btn-ghost btn-block">Ver resumen semanal</button>
+
+    <h2 class="card-title">Datos y backup</h2>
+    <button type="button" id="btn-export" class="btn btn-ghost btn-block">Exportar backup (.json)</button>
+    <button type="button" id="btn-import" class="btn btn-ghost btn-block">Importar backup (.json)</button>
+    <input type="file" id="file-import" accept="application/json,.json" hidden>
+    <button type="button" id="btn-wipe" class="btn btn-danger btn-block">Borrar todos los datos</button>
+    <p class="hint" id="storage-info"></p>
+    <button type="button" id="btn-close-sheet" class="btn btn-primary btn-block">Cerrar</button>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
