@@ -1,7 +1,8 @@
 /* Service worker mínimo: cachea los assets estáticos para uso offline. */
 // Subí este número cada vez que cambies index.html, style.css o app.js:
 // al activarse, el SW borra las caches viejas y vuelve a bajar todo.
-var CACHE = 'gym-tracker-v4';
+// Tiene que coincidir con APP_VERSION en app.js (Ajustes → Versión lo compara).
+var CACHE = 'gym-tracker-v5';
 
 var ASSETS = [
   './',

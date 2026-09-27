@@ -381,23 +381,25 @@ select {
 /* ============ Chart ============ */
 .chart-wrap { position: relative; height: 260px; }
 
-/* ============ Series como pastillas ============ */
+/* ============ Series como renglones ============ */
+/* Una serie por renglón: apiladas se comparan de un vistazo, mientras que
+   envueltas en dos columnas hay que leerlas en zigzag. */
 .set-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .set-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px 4px;
+  padding: 6px 10px 6px 6px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: .82rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

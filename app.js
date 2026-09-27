@@ -7,6 +7,10 @@
 
   var STORAGE_KEY = 'gym-tracker-data';
 
+  /* Versión visible en Ajustes, para saber si el SW ya sirvió la build nueva.
+     Subila junto con CACHE en sw.js cada vez que cambien los assets. */
+  var APP_VERSION = 'v5';
+
   /* ---------------------------------------------------------
      Estado
      --------------------------------------------------------- */
@@ -1744,10 +1748,40 @@
   /* ---------------------------------------------------------
      Sheet de ajustes
      --------------------------------------------------------- */
+  /* Además de la versión del JS que se está ejecutando, mira qué caché tiene
+     viva el SW: si no coinciden, la build nueva se bajó pero todavía no la
+     estás usando (hace falta cerrar y reabrir). */
+  function renderVersionInfo() {
+    var el = $('#version-info');
+    var base = 'App ' + APP_VERSION;
+    var expected = 'gym-tracker-' + APP_VERSION;
+
+    if (!('caches' in window)) {
+      el.textContent = base + ' · este navegador no guarda caché offline.';
+      return;
+    }
+
+    el.textContent = base + ' · leyendo caché…';
+    caches.keys().then(function (keys) {
+      var mine = keys.filter(function (k) { return k.indexOf('gym-tracker-') === 0; });
+      if (!mine.length) {
+        el.textContent = base + ' · sin caché offline todavía.';
+      } else if (mine.length === 1 && mine[0] === expected) {
+        el.textContent = base + ' · caché al día (' + expected + ').';
+      } else {
+        el.textContent = base + ' · caché ' + mine.join(' + ') +
+          ' — cerrá y volvé a abrir la app para terminar de actualizar.';
+      }
+    }).catch(function () {
+      el.textContent = base + ' · no se pudo leer el estado del caché.';
+    });
+  }
+
   function openSheet() {
     $('#storage-info').textContent =
       data.exercises.length + ' ejercicios · ' + data.sessions.length +
       ' sesiones guardadas en este navegador.';
+    renderVersionInfo();
     $('#sheet').classList.remove('hidden');
     $('#sheet-backdrop').classList.remove('hidden');
   }
